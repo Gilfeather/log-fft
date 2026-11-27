@@ -26,13 +26,21 @@
 //! * [`params`]: the paper's window parameters and the Hoeffding bound on
 //!   exceptions.
 //!
+//! * [`grid`]: cyclic and finite-abelian-group DFTs along the grids.tex route.
+//!   It uses the Newton factorisation `V = LΔ^{-1}Lᵀ` (diagonals ×
+//!   triangular Toeplitz). Each Toeplitz factor is applied in place with
+//!   `T = D_u S D_u^{-1} S^{-1}` and shears, with scratch restored. The
+//!   auxiliary length `b ≥ 2a` uses Good–Thomas transforms, and multi-axis
+//!   groups are handled fibre by fibre.
+//!
 //! Not implemented: routing (route.tex), the recursion that drives the
-//! exponent toward 1/2 (kernel.tex), and the extension to cyclic groups and
-//! general fields (grids.tex). The predictor here is expanded directly, not
+//! exponent toward 1/2 (kernel.tex), and, in grids.tex, axis grouping plus
+//! the extension-field packing `K(ζ_M)`. The predictor here is expanded directly, not
 //! through the matrix-root plus routing construction. So the `Q`-call counts
 //! reported by [`ops::OpCounter`] do **not** reflect the paper's savings.
 
 pub mod field;
+pub mod grid;
 pub mod matrix_root;
 pub mod ops;
 pub mod params;

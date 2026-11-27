@@ -69,4 +69,34 @@ fn main() {
     }
     println!("\nNote: Q-calls are high because the predictor is expanded directly");
     println!("(no matrix-root/routing). This checks correctness, not the paper's cost savings.");
+
+    println!("\n== Cyclic / abelian-group DFT via Newton + in-place Toeplitz (grids.tex) ==");
+    use logfourier::grid::{naive_group_dft, newton::vandermonde, AxisPlan, GroupDft};
+    let cases: Vec<(usize, Option<u64>)> = vec![(17, None), (255, None), (1020, None), (4096, None), (1000, Some(3)), (777, Some(5))];
+    for (a, q) in cases {
+        let (plan, label) = match q {
+            None => (AxisPlan::dft(a), "DFT".to_string()),
+            Some(q) => (AxisPlan::geometric(a, Fp::new(q)), format!("V_a(q={q})")),
+        };
+        let x: Vec<Fp> = (0..a as u64).map(|i| Fp::new(i * 2654435761 + 1)).collect();
+        let mut scratch = vec![Fp::ZERO; a];
+        let y = plan.forward(&x, &mut scratch);
+        let v = vandermonde(a, plan.q);
+        let expect: Vec<Fp> = (0..a).map(|j| (0..a).fold(Fp::ZERO, |s, k| s + v[j][k] * x[k])).collect();
+        let ok = y == expect;
+        let back = plan.inverse(&y, &mut scratch) == x;
+        let restored = scratch.iter().all(|v| *v == Fp::ZERO);
+        println!(
+            "{label:>11} a={a:>5}  b={:>5} factors={:<14}  forward exact={ok}  inverse exact={back}  scratch restored={restored}",
+            plan.engine.dft.b,
+            format!("{:?}", plan.engine.dft.factors),
+        );
+        assert!(ok && back && restored);
+    }
+    let dims = [3usize, 5, 17, 4];
+    let g = GroupDft::new(&dims);
+    let x: Vec<Fp> = (0..g.len() as u64).map(|i| Fp::new(i * i + 9)).collect();
+    let exact = g.forward(&x) == naive_group_dft(&dims, &x);
+    println!("G = Z3 x Z5 x Z17 x Z4 (N={}): exact = {exact}", g.len());
+    assert!(exact);
 }

@@ -5,8 +5,10 @@
 //! also holds in `F_p`. Every check in this crate is therefore exact, with
 //! no floating-point rounding.
 
+use alloc::vec::Vec;
 use core::fmt;
-use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use core::iter::{Product, Sum};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 /// The Goldilocks prime `2^64 - 2^32 + 1`.
 pub const P: u64 = 0xFFFF_FFFF_0000_0001;
@@ -15,7 +17,8 @@ pub const P: u64 = 0xFFFF_FFFF_0000_0001;
 pub const GENERATOR: u64 = 7;
 
 /// An element of `F_p`, always stored reduced in `[0, p)`.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
+#[repr(transparent)]
 pub struct Fp(u64);
 
 impl Fp {
@@ -34,8 +37,41 @@ impl Fp {
         }
     }
 
+    /// The canonical representative in `[0, p)`.
     pub fn value(self) -> u64 {
         self.0
+    }
+
+    /// `Some(x)` if `v < p`, otherwise `None` (no silent reduction).
+    pub fn from_canonical(v: u64) -> Option<Self> {
+        (v < P).then_some(Fp(v))
+    }
+
+    /// View field elements as their canonical `u64` values (zero-copy).
+    pub fn as_u64_slice(xs: &[Fp]) -> &[u64] {
+        // SAFETY: `Fp` is `repr(transparent)` over `u64`.
+        unsafe { core::slice::from_raw_parts(xs.as_ptr().cast(), xs.len()) }
+    }
+
+    /// View `u64`s as field elements without copying, if every value is `< p`.
+    pub fn from_canonical_slice(xs: &[u64]) -> Option<&[Fp]> {
+        if xs.iter().all(|&v| v < P) {
+            // SAFETY: `repr(transparent)`, and every value is canonical.
+            Some(unsafe { core::slice::from_raw_parts(xs.as_ptr().cast(), xs.len()) })
+        } else {
+            None
+        }
+    }
+
+    /// Mutable zero-copy view of `u64`s as field elements, if every value is `< p`.
+    pub fn from_canonical_slice_mut(xs: &mut [u64]) -> Option<&mut [Fp]> {
+        if xs.iter().all(|&v| v < P) {
+            // SAFETY: `repr(transparent)`, and every value is canonical. Writes
+            // through `&mut [Fp]` only store canonical values.
+            Some(unsafe { core::slice::from_raw_parts_mut(xs.as_mut_ptr().cast(), xs.len()) })
+        } else {
+            None
+        }
     }
 
     pub fn pow(self, mut e: u64) -> Self {
@@ -81,6 +117,73 @@ impl fmt::Debug for Fp {
         } else {
             write!(f, "{}", self.0)
         }
+    }
+}
+
+impl fmt::Display for Fp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl From<u64> for Fp {
+    /// Reduces modulo `p`.
+    fn from(v: u64) -> Self {
+        Fp::new(v)
+    }
+}
+impl From<u32> for Fp {
+    fn from(v: u32) -> Self {
+        Fp(v as u64)
+    }
+}
+impl From<i64> for Fp {
+    fn from(v: i64) -> Self {
+        Fp::from_i64(v)
+    }
+}
+impl From<bool> for Fp {
+    fn from(v: bool) -> Self {
+        Fp(v as u64)
+    }
+}
+impl From<Fp> for u64 {
+    fn from(v: Fp) -> u64 {
+        v.0
+    }
+}
+
+impl Div for Fp {
+    type Output = Fp;
+    /// Panics on division by zero.
+    #[allow(clippy::suspicious_arithmetic_impl)]
+    fn div(self, rhs: Fp) -> Fp {
+        self * rhs.inv()
+    }
+}
+impl DivAssign for Fp {
+    fn div_assign(&mut self, rhs: Fp) {
+        *self = *self / rhs;
+    }
+}
+impl Sum for Fp {
+    fn sum<I: Iterator<Item = Fp>>(iter: I) -> Fp {
+        iter.fold(Fp::ZERO, |a, b| a + b)
+    }
+}
+impl<'a> Sum<&'a Fp> for Fp {
+    fn sum<I: Iterator<Item = &'a Fp>>(iter: I) -> Fp {
+        iter.fold(Fp::ZERO, |a, b| a + *b)
+    }
+}
+impl Product for Fp {
+    fn product<I: Iterator<Item = Fp>>(iter: I) -> Fp {
+        iter.fold(Fp::ONE, |a, b| a * b)
+    }
+}
+impl<'a> Product<&'a Fp> for Fp {
+    fn product<I: Iterator<Item = &'a Fp>>(iter: I) -> Fp {
+        iter.fold(Fp::ONE, |a, b| a * *b)
     }
 }
 

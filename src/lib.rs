@@ -8,9 +8,11 @@
 //!
 //! ## Transforms
 //!
-//! * [`Ntt`]: power-of-two NTT (`n ≤ 2^32`), in place.
+//! * [`Ntt`]: power-of-two NTT (`n ≤ 2^32`), in place, with batch and
+//!   bit-reversed (permutation-free) entry points.
 //! * [`Dft`]: DFT of **every** length `F_p` supports (`n | p − 1`), using
-//!   Good–Thomas over the coprime factors `2^j, 3, 5, 17, 257, 65537`.
+//!   Good–Thomas over the coprime factors `2^j, 3, 5, 17, 257, 65537`, with
+//!   Rader's reduction for the Fermat primes `17, 257, 65537`.
 //! * [`ChirpZ`]: `y_k = Σ_j x_j q^{jk}` for any nonzero `q` and any sizes,
 //!   without needing `√q`.
 //! * [`InverseChirpZ`]: interpolation at geometric nodes `q^0 … q^{n−1}`.
@@ -20,7 +22,9 @@
 //! * [`convolve`], [`series_inverse`]: exact polynomial multiplication and
 //!   power-series inversion.
 //!
-//! Everything is exact modular arithmetic, with no rounding.
+//! Everything is exact modular arithmetic, with no rounding. Large transforms
+//! run on scoped threads by default (`with_threads(1)` turns this off). With
+//! `default-features = false` the crate is `no_std` + `alloc`.
 //!
 //! ```
 //! use log_fft::{Dft, Fp};
@@ -40,14 +44,19 @@
 //! lemmas themselves (predictor, Hermite repair, matrix root, Newton/Toeplitz
 //! reduction) are implemented and tested in [`paper`].
 
+#![cfg_attr(not(feature = "std"), no_std)]
 // Index-heavy numeric code reads more clearly with explicit index loops.
 #![allow(clippy::needless_range_loop)]
+
+extern crate alloc;
 
 pub mod chirp;
 pub mod dft;
 pub mod field;
 pub mod ntt;
+#[cfg(feature = "std")]
 pub mod paper;
+mod par;
 
 pub use chirp::{ChirpZ, InverseChirpZ};
 pub use dft::{is_supported_len, Dft, GroupDft};

@@ -11,6 +11,9 @@
 //! triangular Toeplitz with entries `1/H_k`, `H_k = Π_{i≤k}(1 − q^i)`, and
 //! both Toeplitz factors are fast convolutions.
 
+use alloc::vec;
+use alloc::vec::Vec;
+
 use crate::field::Fp;
 use crate::ntt::{series_inverse, Ntt};
 
@@ -50,7 +53,7 @@ impl ChirpZ {
         let ntt = Ntt::new(size);
         let mut c_hat = chirp_powers(q, len);
         c_hat.resize(size, Fp::ZERO);
-        ntt.forward(&mut c_hat);
+        ntt.forward_bitrev(&mut c_hat);
         let pre = chirp_powers(q.inv(), n.max(m));
         ChirpZ { n, m, pre, c_hat, ntt }
     }
@@ -72,11 +75,11 @@ impl ChirpZ {
         for (j, &xj) in x.iter().enumerate() {
             buf[self.n - 1 - j] = xj * self.pre[j];
         }
-        self.ntt.forward(&mut buf);
+        self.ntt.forward_bitrev(&mut buf);
         for (b, c) in buf.iter_mut().zip(&self.c_hat) {
             *b *= *c;
         }
-        self.ntt.inverse(&mut buf);
+        self.ntt.inverse_from_bitrev(&mut buf);
         (0..self.m).map(|k| buf[self.n - 1 + k] * self.pre[k]).collect()
     }
 }
@@ -116,7 +119,7 @@ impl InverseChirpZ {
         let ntt = Ntt::new(size);
         let mut s_hat = s;
         s_hat.resize(size, Fp::ZERO);
-        ntt.forward(&mut s_hat);
+        ntt.forward_bitrev(&mut s_hat);
         InverseChirpZ { n, inv_h, inv_mid, s_hat, ntt }
     }
 
@@ -132,11 +135,11 @@ impl InverseChirpZ {
     fn lower(&self, x: &[Fp]) -> Vec<Fp> {
         let mut buf = x.to_vec();
         buf.resize(self.ntt.len(), Fp::ZERO);
-        self.ntt.forward(&mut buf);
+        self.ntt.forward_bitrev(&mut buf);
         for (b, s) in buf.iter_mut().zip(&self.s_hat) {
             *b *= *s;
         }
-        self.ntt.inverse(&mut buf);
+        self.ntt.inverse_from_bitrev(&mut buf);
         buf.truncate(self.n);
         buf
     }

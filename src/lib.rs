@@ -57,6 +57,8 @@ pub mod ntt;
 #[cfg(feature = "std")]
 pub mod paper;
 mod par;
+#[cfg(kani)]
+mod proofs;
 
 pub use chirp::{ChirpZ, InverseChirpZ};
 pub use dft::{is_supported_len, Dft, GroupDft};

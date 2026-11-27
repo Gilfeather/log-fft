@@ -50,6 +50,30 @@ Ntt::new(1024).forward(Fp::from_canonical_slice_mut(&mut raw).unwrap());
 
 There are no dependencies.
 
+## Formal verification (Kani)
+
+`cargo kani` checks these claims for **every** input in the domain, not a
+sample. Kani also rules out panics, overflow and out-of-bounds access on
+those paths:
+
+| Harness | Claim |
+|---|---|
+| `reduce128_is_mod_p` | the Goldilocks reduction returns `x mod p` for all 2^128 inputs |
+| `mul_is_reduced_product` | `a * b` is that reduction of the exact 128-bit product |
+| `add_is_mod_p`, `sub_is_mod_p`, `neg_is_mod_p` | `+`, `−`, negation are exact mod `p` on canonical inputs |
+| `new_reduces_and_from_canonical_rejects`, `from_i64_is_mod_p` | constructors reduce correctly; `from_canonical` accepts exactly `v < p` |
+| `canonical_slice_view` | the zero-copy `&[u64] → &[Fp]` view accepts exactly canonical data and keeps the values |
+| `bit_reverse_involution` | the bit-reversal permutation is correct and self-inverse (length 8) |
+
+The proof of `reduce128` avoids 128-bit division. It uses `2^64 ≡ 2^32−1`
+and `2^96 ≡ −1 (mod p)`, which the compiler checks with `const` assertions,
+and shows the result differs from `x` by a small multiple of `p`. A
+deliberately broken reduction is rejected by the same harness.
+
+Not formally verified: the transforms themselves (`Ntt`, `Dft`, …). A
+symbolic proof even for `n = 2` did not finish within 25 minutes. Those are
+covered by the exhaustive and randomised tests against `O(n²)` references.
+
 ## Performance
 
 `cargo run --release --example bench` on Apple silicon (12 cores). Times are in ms, and the machine was under load, so treat them as rough:

@@ -1,6 +1,6 @@
 [package]
 name = "log-fft"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 rust-version = "1.85"
 description = "Exact FFT/NTT over the Goldilocks field (any length dividing p-1, chirp-z and its inverse, abelian-group DFTs), plus executable building blocks of the 2026 'logarithmic exponent of finite Fourier transforms' construction"
@@ -27,3 +27,6 @@ overflow-checks = true
 [[example]]
 name = "paper_demo"
 required-features = ["std"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

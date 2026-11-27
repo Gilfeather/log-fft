@@ -220,6 +220,10 @@ impl Neg for Fp {
 /// `2^64 mod p = 2^32 − 1`.
 const EPSILON: u64 = 0xFFFF_FFFF;
 
+// Compile-time facts used by `reduce128` (and its Kani proof).
+const _: () = assert!((1u128 << 64) % (P as u128) == EPSILON as u128);
+const _: () = assert!((1u128 << 96) % (P as u128) == P as u128 - 1);
+
 /// Reduce a 128-bit value modulo `p`, using `2^64 ≡ 2^32 − 1` and `2^96 ≡ −1`.
 #[inline(always)]
 pub(crate) fn reduce128(x: u128) -> u64 {

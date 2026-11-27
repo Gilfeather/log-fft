@@ -7,6 +7,7 @@ description = "Exact FFT/NTT over the Goldilocks field (any length dividing p-1,
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 documentation = "https://docs.rs/log-fft"
+repository = "https://github.com/Gilfeather/log-fft"
 keywords = ["fft", "ntt", "dft", "goldilocks", "chirp-z"]
 categories = ["algorithms", "mathematics", "cryptography"]
 exclude = [".github"]

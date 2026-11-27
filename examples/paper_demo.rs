@@ -3,11 +3,11 @@
 //! 1. Prints the paper's window parameters and where they start to bite.
 //! 2. Checks prediction + Hermite/Vandermonde repair against the reference.
 
-use logfourier::ops::{apply_f_reference, OpCounter};
-use logfourier::params::{paper_half_width, paper_r, paper_threshold_m};
-use logfourier::predictor::apply_predictor;
-use logfourier::repair::{apply_f_repaired, balanced_shifts, paper_exception_budget};
-use logfourier::{Fp, Params};
+use log_fft::paper::ops::{apply_f_reference, OpCounter};
+use log_fft::paper::params::{paper_half_width, paper_r, paper_threshold_m};
+use log_fft::paper::predictor::apply_predictor;
+use log_fft::paper::repair::{apply_f_repaired, balanced_shifts, paper_exception_budget};
+use log_fft::{paper::Params, Fp};
 
 fn main() {
     println!("== Paper parameters (binary case) ==");
@@ -71,7 +71,7 @@ fn main() {
     println!("(no matrix-root/routing). This checks correctness, not the paper's cost savings.");
 
     println!("\n== Cyclic / abelian-group DFT via Newton + in-place Toeplitz (grids.tex) ==");
-    use logfourier::grid::{naive_group_dft, newton::vandermonde, AxisPlan, GroupDft};
+    use log_fft::paper::grid::{naive_group_dft, newton::vandermonde, AxisPlan, GroupDft};
     let cases: Vec<(usize, Option<u64>)> = vec![(17, None), (255, None), (1020, None), (4096, None), (1000, Some(3)), (777, Some(5))];
     for (a, q) in cases {
         let (plan, label) = match q {

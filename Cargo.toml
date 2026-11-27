@@ -1,6 +1,19 @@
 [package]
-name = "logfourier"
+name = "log-fft"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
+description = "Exact FFT/NTT over the Goldilocks field (any length dividing p-1, chirp-z and its inverse, abelian-group DFTs), plus executable building blocks of the 2026 'logarithmic exponent of finite Fourier transforms' construction"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+documentation = "https://docs.rs/log-fft"
+keywords = ["fft", "ntt", "dft", "goldilocks", "chirp-z"]
+categories = ["algorithms", "mathematics", "cryptography"]
+exclude = [".github"]
 
 [dependencies]
+
+[profile.test]
+opt-level = 3
+debug-assertions = true
+overflow-checks = true

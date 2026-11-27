@@ -28,9 +28,9 @@
 //! operations: row mixing by `H` or `Hᵀ`, plus `Q_j` calls.
 
 use crate::field::{solve, Fp};
-use crate::ops::{from_spectral, target_multiplier, to_spectral, OpCounter};
-use crate::params::Params;
-use crate::predictor::{apply_predictor, predictor_value};
+use crate::paper::ops::{from_spectral, target_multiplier, to_spectral, OpCounter};
+use crate::paper::params::Params;
+use crate::paper::predictor::{apply_predictor, predictor_value};
 
 /// Result of a repaired batch.
 #[derive(Debug)]
@@ -214,7 +214,7 @@ pub fn balanced_shifts(m: usize, w: usize) -> Vec<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ops::apply_f_reference;
+    use crate::paper::ops::apply_f_reference;
 
     fn rows(m: usize, w: usize, seed: u64) -> Vec<Vec<Fp>> {
         let mut st = seed;

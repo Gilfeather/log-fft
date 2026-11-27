@@ -114,10 +114,35 @@ impl Neg for Fp {
     }
 }
 
+/// `2^64 mod p = 2^32 − 1`.
+const EPSILON: u64 = 0xFFFF_FFFF;
+
+/// Reduce a 128-bit value modulo `p`, using `2^64 ≡ 2^32 − 1` and `2^96 ≡ −1`.
+#[inline(always)]
+pub(crate) fn reduce128(x: u128) -> u64 {
+    let lo = x as u64;
+    let hi = (x >> 64) as u64;
+    let hi_hi = hi >> 32;
+    let hi_lo = hi & EPSILON;
+    // lo − hi_hi·2^96 ≡ lo − hi_hi
+    let (mut t0, borrow) = lo.overflowing_sub(hi_hi);
+    if borrow {
+        t0 = t0.wrapping_sub(EPSILON); // add 2^64 ≡ subtract (2^64 mod p) back
+    }
+    // + hi_lo·2^64 ≡ hi_lo·(2^32 − 1)
+    let t1 = hi_lo * EPSILON;
+    let (mut r, carry) = t0.overflowing_add(t1);
+    if carry {
+        r = r.wrapping_add(EPSILON);
+    }
+    if r >= P { r - P } else { r }
+}
+
 impl Mul for Fp {
     type Output = Fp;
+    #[inline(always)]
     fn mul(self, rhs: Fp) -> Fp {
-        Fp(((self.0 as u128 * rhs.0 as u128) % P as u128) as u64)
+        Fp(reduce128(self.0 as u128 * rhs.0 as u128))
     }
 }
 
@@ -192,6 +217,28 @@ mod tests {
         let w = Fp::root_of_unity(1 << 20);
         assert_eq!(w.pow(1 << 20), Fp::ONE);
         assert_ne!(w.pow(1 << 19), Fp::ONE);
+    }
+
+    #[test]
+    fn fast_reduction_matches_modulo() {
+        let edges = [0u64, 1, 2, EPSILON, EPSILON + 1, 1 << 32, P - 1, P - 2, P / 2, (1 << 63) + 12345];
+        for &a in &edges {
+            for &b in &edges {
+                let a = a % P;
+                let b = b % P;
+                let x = a as u128 * b as u128;
+                assert_eq!(reduce128(x), (x % P as u128) as u64, "{a} * {b}");
+            }
+        }
+        // Arbitrary 128-bit inputs, not only products.
+        let mut s = 0x9E37_79B9_7F4A_7C15u128;
+        for _ in 0..2_000_000 {
+            s = s.wrapping_mul(0x2360_ED05_1FC6_5DA4_4385_DF64_9FCC_F645).wrapping_add(1);
+            assert_eq!(reduce128(s), (s % P as u128) as u64, "x = {s}");
+        }
+        for x in [u128::MAX, u128::MAX - 1, (P as u128) << 64, ((P as u128) << 64) - 1, 1u128 << 127] {
+            assert_eq!(reduce128(x), (x % P as u128) as u64, "x = {x}");
+        }
     }
 
     #[test]

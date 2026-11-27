@@ -17,13 +17,13 @@
 //!
 //! Simplification: here `Π_j (1 + Tπ_j)` is expanded by a direct dynamic
 //! programme, which costs `m·D` `Q`-calls per row. The paper instead uses the
-//! matrix-root trick (see [`crate::matrix_root`]) plus routing, so that one
+//! matrix-root trick (see [`crate::paper::matrix_root`]) plus routing, so that one
 //! predictor application is `O(D)` pencil stages. This module checks that
 //! the predictor is correct, not how much it costs.
 
 use crate::field::{binom, Fp};
-use crate::ops::{apply_q, OpCounter};
-use crate::params::Params;
+use crate::paper::ops::{apply_q, OpCounter};
+use crate::paper::params::Params;
 
 /// Coefficients `(−1)^{u−|β|} (−2)^h binom(−u, h−i)` mixing `e_i(π)` into `P_β`,
 /// returned as a vector over `i = 0..=D`.
@@ -106,7 +106,7 @@ fn mask(m: usize) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ops::{target_multiplier, to_spectral};
+    use crate::paper::ops::{target_multiplier, to_spectral};
 
     #[test]
     fn exact_on_window_wrong_outside() {

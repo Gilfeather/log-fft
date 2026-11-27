@@ -193,7 +193,7 @@ pub fn upper_toeplitz_direct(h: &[Fp], x: &[Fp]) -> Vec<Fp> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::grid::smooth::choose_b;
+    use crate::paper::grid::smooth::choose_b;
 
     fn seq(a: usize, s: u64) -> Vec<Fp> {
         (0..a as u64).map(|i| Fp::new(i * i * s + 3 * i + s)).collect()

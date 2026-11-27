@@ -1,51 +1,59 @@
-//! # logfourier
+//! # log-fft
 //!
-//! An exact, executable check of the main building blocks in
-//! *"The logarithmic exponent of finite Fourier transforms"* (OpenAI preprint,
-//! 2026-11-24, <https://github.com/openai/math>). The paper proves
-//! `N (log N)^{1/2+o(1)}` linear-circuit upper bounds and a matching
-//! `N √(log N)` lower bound for exact finite Fourier transforms.
+//! Exact Fourier transforms over the Goldilocks field
+//! `F_p`, `p = 2^64 − 2^32 + 1`. The crate also includes executable building
+//! blocks of the construction in *"The logarithmic exponent of finite
+//! Fourier transforms"* (OpenAI preprint, 2026-11-24,
+//! <https://github.com/openai/math>).
 //!
-//! **This is not a fast FFT.** The paper's upper bound is asymptotic, with no
-//! explicit constants. Its predictor window only becomes narrower than
-//! `[0, m]` once `m` is large (see [`params::paper_threshold_m`]). Each level
-//! of the recursion then needs about `2(m + D)` axes. For real FFTs, use
-//! `rustfft` or a similar crate.
+//! ## Transforms
 //!
-//! What this crate checks, all exactly in `F_p` (`p = 2^64 − 2^32 + 1`):
+//! * [`Ntt`]: power-of-two NTT (`n ≤ 2^32`), in place.
+//! * [`Dft`]: DFT of **every** length `F_p` supports (`n | p − 1`), using
+//!   Good–Thomas over the coprime factors `2^j, 3, 5, 17, 257, 65537`.
+//! * [`ChirpZ`]: `y_k = Σ_j x_j q^{jk}` for any nonzero `q` and any sizes,
+//!   without needing `√q`.
+//! * [`InverseChirpZ`]: interpolation at geometric nodes `q^0 … q^{n−1}`.
+//!   It uses the paper's Newton factorisation `V = D_H · T · M · Tᵀ · D_H`,
+//!   so it runs in `O(n log n)`.
+//! * [`GroupDft`]: DFT on `Z_{a_1} × … × Z_{a_r}`.
+//! * [`convolve`], [`series_inverse`]: exact polynomial multiplication and
+//!   power-series inversion.
 //!
-//! * [`predictor`]: the count predictor `P_β` gives exactly `z = Π_j q_j` on
-//!   the window `c ∈ [u, v]` (Lemma count-predict, binary case).
-//! * [`repair`]: a Vandermonde (generalised Reed–Solomon) check combined with
-//!   the Hermite polynomial `g(y) = (3y − y³)/2` turns a batch of predictions
-//!   with at most `s` exceptions per frequency into exact output. It uses
-//!   `ℓ + 2 = 4` predictor applications and `4s` spectral row conversions
-//!   (Lemma hermite-repair, Theorem thm:repair).
-//! * [`matrix_root`]: `L^b = p · I` for the `ξ`-commuting pencil
-//!   (Lemma matrix-root).
-//! * [`params`]: the paper's window parameters and the Hoeffding bound on
-//!   exceptions.
+//! Everything is exact modular arithmetic, with no rounding.
 //!
-//! * [`grid`]: cyclic and finite-abelian-group DFTs along the grids.tex route.
-//!   It uses the Newton factorisation `V = LΔ^{-1}Lᵀ` (diagonals ×
-//!   triangular Toeplitz). Each Toeplitz factor is applied in place with
-//!   `T = D_u S D_u^{-1} S^{-1}` and shears, with scratch restored. The
-//!   auxiliary length `b ≥ 2a` uses Good–Thomas transforms, and multi-axis
-//!   groups are handled fibre by fibre.
+//! ```
+//! use log_fft::{Dft, Fp};
+//! let dft = Dft::new(255); // 255 = 3·5·17
+//! let x: Vec<Fp> = (0..255).map(Fp::new).collect();
+//! let y = dft.forward(&x);
+//! assert_eq!(dft.inverse(&y), x);
+//! ```
 //!
-//! Not implemented: routing (route.tex), the recursion that drives the
-//! exponent toward 1/2 (kernel.tex), and, in grids.tex, axis grouping plus
-//! the extension-field packing `K(ζ_M)`. The predictor here is expanded directly, not
-//! through the matrix-root plus routing construction. So the `Q`-call counts
-//! reported by [`ops::OpCounter`] do **not** reflect the paper's savings.
+//! ## About the paper
+//!
+//! The paper proves `N(log N)^{1/2+o(1)}` circuit bounds. Its constants are
+//! non-explicit, and its recursion is defined to use direct transforms for
+//! bounded sizes. From its own cost formulas, any saving needs arrays
+//! beyond about `2^500` entries. So the transforms above are the path the
+//! paper's algorithm takes at every size a computer can hold. The paper's
+//! lemmas themselves (predictor, Hermite repair, matrix root, Newton/Toeplitz
+//! reduction) are implemented and tested in [`paper`].
 
+// Index-heavy numeric code reads more clearly with explicit index loops.
+#![allow(clippy::needless_range_loop)]
+
+pub mod chirp;
+pub mod dft;
 pub mod field;
-pub mod grid;
-pub mod matrix_root;
-pub mod ops;
-pub mod params;
-pub mod predictor;
-pub mod repair;
+pub mod ntt;
+pub mod paper;
 
+pub use chirp::{ChirpZ, InverseChirpZ};
+pub use dft::{is_supported_len, Dft, GroupDft};
 pub use field::Fp;
-pub use params::Params;
+pub use ntt::{convolve, series_inverse, Ntt};
+
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+pub struct ReadmeDoctests;
